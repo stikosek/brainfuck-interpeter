@@ -279,8 +279,17 @@ fn main() {
 
     let mut program: Program = Program::build(contents);
 
-    //program.run();
-    program.diagnostic_run();
+    // Run based on mode of operation
+    let arguments: Vec<String> = env::args().collect();
+    if arguments.len() > 2 {
+        if arguments[2] == "visualised" {
+            program.diagnostic_run();
+        }else{
+            program.run();
+        }
+    }else{
+        program.run();
+    }
 }
 
 fn clear_term() {
