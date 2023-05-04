@@ -292,11 +292,8 @@ impl Program {
     }
 }
 
-fn main() {
-    let contents: String = get_file().unwrap_or_else(|err| {
-        eprintln!("Couldn't read file, {:?}", err);
-        std::process::exit(1);
-    });
+fn main_wrapper() -> BFResult<()> {
+    let contents: String = get_file()?;
 
     let mut program: Program = Program::build(contents);
 
@@ -310,6 +307,14 @@ fn main() {
         }
     } else {
         program.run();
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(smthng) = main_wrapper() {
+        eprintln!("Generický error handler:\n{}", smthng);
     }
 }
 
