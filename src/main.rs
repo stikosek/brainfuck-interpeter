@@ -3,19 +3,44 @@ use std::{
     time::{Duration, Instant},
 };
 
-fn get_file() -> Result<String, &'static str> {
+type BFResult<T> = Result<T, BFError>;
+
+#[derive(Debug)]
+enum BFError {
+    IoError(std::io::Error),
+    ArgError,
+    NegativeAddressError,
+    ParenthesesPairingError,
+    InvalidCharacter,
+}
+
+impl From<std::io::Error> for BFError {
+    fn from(value: std::io::Error) -> Self {
+        BFError::IoError(value)
+    }
+}
+
+impl std::fmt::Display for BFError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BFError::IoError(err) => write!(f, "{}", err),
+            BFError::ArgError => write!(f, "Špatný počet argumentů"),
+            BFError::NegativeAddressError => write!(
+                f,
+                "Brainfuck program tried going into negative memory adresses."
+            ),
+            _ => write!(f, "Nechce se mi implementovat, mrdám to"),
+        }
+    }
+}
+
+fn get_file() -> Result<String, BFError> {
     let arguments: Vec<String> = std::env::args().collect();
     if arguments.len() < 2 {
-        return Err("No arguments given!");
+        return Err(BFError::ArgError);
     }
 
-    let file: Result<String, std::io::Error> = std::fs::read_to_string(&arguments[1]);
-
-    if file.is_err() {
-        return Err("Error while reading to string.");
-    }
-
-    Ok(file.unwrap())
+    std::fs::read_to_string(&arguments[1]).map_err(BFError::from)
 }
 
 fn check_char(char: &char) -> bool {
@@ -61,7 +86,7 @@ impl Program {
         }
     }
 
-    fn step(&mut self) -> Result<bool, &'static str> {
+    fn step(&mut self) -> BFResult<bool> {
         let codelet: char = self.next_codelet();
         let current_memory: &mut u8 = &mut self.memory[self.pointer as usize];
         let mut cancel_step: bool = false;
@@ -69,7 +94,7 @@ impl Program {
         match codelet {
             '<' => {
                 if (self.pointer - 1) == -1 {
-                    return Err("Brainfuck program tried going into negative memory adresses.");
+                    return Err(BFError::NegativeAddressError);
                 }
                 self.pointer -= 1;
             }
@@ -130,7 +155,7 @@ impl Program {
                     }
 
                     if tracker != 0 {
-                        return Err("1 A unclosed [] statement was found.");
+                        return Err(BFError::ParenthesesPairingError);
                     }
 
                     //println!("Closing ] found at {}", vcounter);
@@ -167,7 +192,7 @@ impl Program {
                     }
 
                     if tracker != 0 {
-                        return Err("2 A unclosed [] statement was found.");
+                        return Err(BFError::ParenthesesPairingError);
                     }
 
                     //println!("Closing [ found at {}", vcounter);
@@ -176,7 +201,7 @@ impl Program {
                 }
             }
             _ => {
-                return Err("A invalid character got into the main loop.");
+                return Err(BFError::InvalidCharacter);
             }
         }
 
@@ -268,8 +293,8 @@ impl Program {
 }
 
 fn main() {
-    let contents: String = get_file().unwrap_or_else(|err: &str| {
-        eprintln!("Couldn't read file, {}", err);
+    let contents: String = get_file().unwrap_or_else(|err| {
+        eprintln!("Couldn't read file, {:?}", err);
         std::process::exit(1);
     });
 
