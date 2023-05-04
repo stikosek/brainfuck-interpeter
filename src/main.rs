@@ -52,9 +52,9 @@ fn check_char(char: &char) -> bool {
 
 struct Program {
     memory: Vec<u8>,
-    pointer: i16,
+    pointer: u16,
     code: String,
-    counter: i32,
+    counter: u32,
     output_log: String,
 }
 
@@ -72,11 +72,7 @@ impl Program {
     }
 
     fn next_codelet(&self) -> char {
-        if let Some((_, c)) = self
-            .code
-            .char_indices()
-            .nth(self.counter.try_into().unwrap())
-        {
+        if let Some(c) = self.code.chars().nth(self.counter.try_into().unwrap()) {
             c
         } else {
             panic!("Index out of range.")
@@ -90,7 +86,7 @@ impl Program {
 
         match codelet {
             '<' => {
-                if (self.pointer - 1) == -1 {
+                if self.pointer == 0 {
                     return Err(BFError::NegativeAddressError);
                 }
                 self.pointer -= 1;
@@ -99,41 +95,34 @@ impl Program {
                 self.pointer += 1;
             }
             '+' => {
-                if (*current_memory as i32 + 1) > 255 {
-                    *current_memory = 0;
+                *current_memory = if *current_memory == 255 {
+                    0
                 } else {
-                    *current_memory += 1;
+                    *current_memory + 1
                 }
             }
             '-' => {
-                if (*current_memory as i32 - 1) == -1 {
-                    *current_memory = 255;
+                *current_memory = if *current_memory == 0 {
+                    255
                 } else {
-                    *current_memory -= 1;
+                    *current_memory - 1
                 }
             }
             '.' => {
                 let conversion_result: char =
                     char::from_u32(*current_memory as u32).unwrap_or('\0');
-                if conversion_result == '\0' {
-                    print!("{}", *current_memory);
-                    self.output_log += format!("{}", *current_memory).as_str();
-                } else {
-                    print!("{}", conversion_result);
-                    self.output_log.push(conversion_result)
-                };
+                print!("{}", conversion_result);
+                self.output_log.push(conversion_result);
             }
             ',' => {
                 let mut input = [0];
-                std::io::stdin()
-                    .read_exact(&mut input)
-                    .expect("Failed to read user input");
+                std::io::stdin().read_exact(&mut input)?;
                 *current_memory = input[0];
             }
             '[' => {
                 if *current_memory == 0 {
-                    let mut tracker: i32 = 1;
-                    let mut vcounter: i32 = self.counter + 1;
+                    let mut tracker: u32 = 1;
+                    let mut vcounter: u32 = self.counter + 1;
 
                     for tt in self.code.chars().skip(vcounter as usize) {
                         match tt {
@@ -162,8 +151,8 @@ impl Program {
             }
             ']' => {
                 if *current_memory != 0 {
-                    let mut tracker: i32 = 1;
-                    let mut vcounter: i32 = self.counter - 1;
+                    let mut tracker: u32 = 1;
+                    let mut vcounter: u32 = self.counter - 1;
 
                     let instruction_vector: Vec<char> = self.code.chars().collect();
                     if instruction_vector.get(vcounter as usize).is_some() {
@@ -210,22 +199,16 @@ impl Program {
         Ok(true)
     }
 
-    fn run(&mut self) {
+    fn run(&mut self) -> BFResult<()> {
         let start_time: Instant = Instant::now();
-        let codelet_count: i32 = self.code.chars().count().try_into().unwrap();
+        let codelet_count: u32 = self.code.chars().count().try_into().unwrap();
         println!("Running bf program. Instruction amount: {}", &codelet_count);
         println!("Pure code:");
         println!("{}", self.code);
         println!("---------------------------------------");
         // Main program loop
         while self.counter < codelet_count {
-            self.step().unwrap_or_else(|err| {
-                eprintln!(
-                    "Brainfuck program halted at valid character no. {}, Reason: {}",
-                    self.counter, err
-                );
-                std::process::exit(1);
-            });
+            self.step()?;
         }
 
         let elapsed: Duration = start_time.elapsed();
@@ -256,36 +239,29 @@ impl Program {
             }
 
             let conversion_result: char = char::from_u32(cell as u32).unwrap_or('\0');
-            if conversion_result == '\0' {
-                res.push('?');
-            } else {
-                res.push(conversion_result);
-            };
+            res.push(conversion_result);
         }
 
         for _ in 0..self.pointer {
             point.push(' ')
         }
+
         point.push('↥');
         println!("{}", res);
         println!("{}", point);
         println!("Output so far: {}", self.output_log);
     }
 
-    fn diagnostic_run(&mut self) {
-        let codelet_count: i32 = self.code.chars().count().try_into().unwrap();
+    fn diagnostic_run(&mut self) -> BFResult<()> {
+        let codelet_count: u32 = self.code.chars().count().try_into().unwrap();
         while self.counter < codelet_count {
-            self.step().unwrap_or_else(|err| {
-                eprintln!(
-                    "Brainfuck program halted at valid character no. {}, Reason: {}",
-                    self.counter, err
-                );
-                std::process::exit(1);
-            });
+            self.step()?;
             clear_term();
             self.render_memory();
             std::thread::sleep(Duration::from_millis(10));
         }
+
+        Ok(())
     }
 }
 
@@ -298,12 +274,12 @@ fn main_wrapper() -> BFResult<()> {
     let arguments: Vec<String> = std::env::args().collect();
     if arguments.len() > 2 {
         if arguments[2] == "visualised" {
-            program.diagnostic_run();
+            program.diagnostic_run()?;
         } else {
-            program.run();
+            program.run()?;
         }
     } else {
-        program.run();
+        program.run()?;
     }
 
     Ok(())
