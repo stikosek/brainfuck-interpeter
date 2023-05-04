@@ -44,13 +44,10 @@ fn get_file() -> Result<String, BFError> {
 }
 
 fn check_char(char: &char) -> bool {
-    let valid_chars: Vec<char> = vec!['>', '<', '+', '-', '.', ',', '[', ']'];
-    for vchar in valid_chars.into_iter() {
-        if char == &vchar {
-            return true;
-        }
+    match char {
+        '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => true,
+        _ => false,
     }
-    false
 }
 
 struct Program {
