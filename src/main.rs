@@ -44,10 +44,7 @@ fn get_file() -> Result<String, BFError> {
 }
 
 fn check_char(char: &char) -> bool {
-    match char {
-        '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => true,
-        _ => false,
-    }
+    matches!(char, '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']')
 }
 
 struct Program {
