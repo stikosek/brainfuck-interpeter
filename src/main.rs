@@ -1,19 +1,15 @@
-use std::env;
-use std::fs;
-use std::io;
-use std::io::Read;
-use std::process;
-use std::thread;
-use std::time;
-use std::vec;
+use std::{
+    io::Read,
+    time::{Duration, Instant},
+};
 
 fn get_file() -> Result<String, &'static str> {
-    let arguments: Vec<String> = env::args().collect();
+    let arguments: Vec<String> = std::env::args().collect();
     if arguments.len() < 2 {
         return Err("No arguments given!");
     }
 
-    let file: Result<String, io::Error> = fs::read_to_string(&arguments[1]);
+    let file: Result<String, std::io::Error> = std::fs::read_to_string(&arguments[1]);
 
     if file.is_err() {
         return Err("Error while reading to string.");
@@ -37,7 +33,7 @@ struct Program {
     pointer: i16,
     code: String,
     counter: i32,
-    output_log: String
+    output_log: String,
 }
 
 impl Program {
@@ -49,7 +45,7 @@ impl Program {
             pointer: 0,
             code: pure_code,
             counter: 0,
-            output_log: String::new()
+            output_log: String::new(),
         }
     }
 
@@ -99,7 +95,7 @@ impl Program {
                     char::from_u32(*current_memory as u32).unwrap_or('\0');
                 if conversion_result == '\0' {
                     print!("{}", *current_memory);
-                    self.output_log += format!("{}",*current_memory).as_str();
+                    self.output_log += format!("{}", *current_memory).as_str();
                 } else {
                     print!("{}", conversion_result);
                     self.output_log.push(conversion_result)
@@ -107,7 +103,7 @@ impl Program {
             }
             ',' => {
                 let mut input = [0];
-                io::stdin()
+                std::io::stdin()
                     .read_exact(&mut input)
                     .expect("Failed to read user input");
                 *current_memory = input[0];
@@ -193,7 +189,7 @@ impl Program {
     }
 
     fn run(&mut self) {
-        let start_time: time::Instant = time::Instant::now();
+        let start_time: Instant = Instant::now();
         let codelet_count: i32 = self.code.chars().count().try_into().unwrap();
         println!("Running bf program. Instruction amount: {}", &codelet_count);
         println!("Pure code:");
@@ -206,18 +202,18 @@ impl Program {
                     "Brainfuck program halted at valid character no. {}, Reason: {}",
                     self.counter, err
                 );
-                process::exit(1);
+                std::process::exit(1);
             });
         }
 
-        let elapsed: time::Duration = start_time.elapsed();
+        let elapsed: Duration = start_time.elapsed();
         println!("---------------------------------------");
         println!(
             "Execution succesful! Took {} microseconds",
             elapsed.as_micros()
         );
         println!("Program stopped at count {}.", self.counter);
-        process::exit(0);
+        std::process::exit(0);
     }
 
     fn render_memory(&self) {
@@ -251,7 +247,7 @@ impl Program {
         point.push('↥');
         println!("{}", res);
         println!("{}", point);
-        println!("Output so far: {}",self.output_log);
+        println!("Output so far: {}", self.output_log);
     }
 
     fn diagnostic_run(&mut self) {
@@ -262,11 +258,11 @@ impl Program {
                     "Brainfuck program halted at valid character no. {}, Reason: {}",
                     self.counter, err
                 );
-                process::exit(1);
+                std::process::exit(1);
             });
             clear_term();
             self.render_memory();
-            thread::sleep(time::Duration::from_millis(10));
+            std::thread::sleep(Duration::from_millis(10));
         }
     }
 }
@@ -274,20 +270,20 @@ impl Program {
 fn main() {
     let contents: String = get_file().unwrap_or_else(|err: &str| {
         eprintln!("Couldn't read file, {}", err);
-        process::exit(1);
+        std::process::exit(1);
     });
 
     let mut program: Program = Program::build(contents);
 
     // Run based on mode of operation
-    let arguments: Vec<String> = env::args().collect();
+    let arguments: Vec<String> = std::env::args().collect();
     if arguments.len() > 2 {
         if arguments[2] == "visualised" {
             program.diagnostic_run();
-        }else{
+        } else {
             program.run();
         }
-    }else{
+    } else {
         program.run();
     }
 }
