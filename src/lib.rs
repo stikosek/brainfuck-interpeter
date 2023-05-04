@@ -3,10 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-type BFResult<T> = Result<T, BFError>;
+pub type BFResult<T> = Result<T, BFError>;
 
 #[derive(Debug)]
-enum BFError {
+pub enum BFError {
     IoError(std::io::Error),
     ArgError,
     NegativeAddressError,
@@ -34,20 +34,11 @@ impl std::fmt::Display for BFError {
     }
 }
 
-fn get_file() -> Result<String, BFError> {
-    let arguments: Vec<String> = std::env::args().collect();
-    if arguments.len() < 2 {
-        return Err(BFError::ArgError);
-    }
-
-    std::fs::read_to_string(&arguments[1]).map_err(BFError::from)
-}
-
 fn check_char(char: &char) -> bool {
     matches!(char, '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']')
 }
 
-struct Program {
+pub struct Program {
     memory: Vec<u8>,
     pointer: u16,
     code: Vec<char>,
@@ -56,7 +47,7 @@ struct Program {
 }
 
 impl Program {
-    fn build(code: String) -> Self {
+    pub fn build(code: String) -> Self {
         let pure_code: Vec<char> = code.chars().filter(check_char).collect();
 
         Self {
@@ -68,6 +59,20 @@ impl Program {
         }
     }
 
+    pub fn build_from_file(path: String) ->  Result<Self, BFError> {
+        let code = std::fs::read_to_string(path).map_err(BFError::from)?;
+
+        let pure_code: Vec<char> = code.chars().filter(check_char).collect();
+
+        Ok(Self {
+            memory: vec![0; 65535],
+            pointer: 0,
+            code: pure_code,
+            counter: 0,
+            output_log: String::new(),
+        })
+    }
+
     fn next_codelet(&self) -> char {
         if let Some(c) = self.code.get(self.counter as usize) {
             *c
@@ -76,7 +81,7 @@ impl Program {
         }
     }
 
-    fn step(&mut self) -> BFResult<bool> {
+    pub fn step(&mut self) -> BFResult<bool> {
         let codelet: char = self.next_codelet();
         let current_memory: &mut u8 = &mut self.memory[self.pointer as usize];
         let mut cancel_step: bool = false;
@@ -195,7 +200,7 @@ impl Program {
         Ok(true)
     }
 
-    fn run(&mut self) -> BFResult<()> {
+    pub fn run(&mut self) -> BFResult<()> {
         let start_time: Instant = Instant::now();
         let codelet_count: u32 = self.code.len() as u32;
         println!("Running bf program. Instruction amount: {}", &codelet_count);
@@ -248,7 +253,7 @@ impl Program {
         println!("Output so far: {}", self.output_log);
     }
 
-    fn diagnostic_run(&mut self) -> BFResult<()> {
+    pub fn diagnostic_run(&mut self) -> BFResult<()> {
         let codelet_count: u32 = self.code.len() as u32;
         while self.counter < codelet_count {
             self.step()?;
@@ -261,31 +266,6 @@ impl Program {
     }
 }
 
-fn main_wrapper() -> BFResult<()> {
-    let contents: String = get_file()?;
-
-    let mut program: Program = Program::build(contents);
-
-    // Run based on mode of operation
-    let arguments: Vec<String> = std::env::args().collect();
-    if arguments.len() > 2 {
-        if arguments[2] == "visualised" {
-            program.diagnostic_run()?;
-        } else {
-            program.run()?;
-        }
-    } else {
-        program.run()?;
-    }
-
-    Ok(())
-}
-
-fn main() {
-    if let Err(smthng) = main_wrapper() {
-        eprintln!("Generický error handler:\n{}", smthng);
-    }
-}
 
 fn clear_term() {
     print!("{}[2J", 27 as char);
