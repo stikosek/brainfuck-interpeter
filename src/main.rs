@@ -53,14 +53,14 @@ fn check_char(char: &char) -> bool {
 struct Program {
     memory: Vec<u8>,
     pointer: u16,
-    code: String,
+    code: Vec<char>,
     counter: u32,
     output_log: String,
 }
 
 impl Program {
     fn build(code: String) -> Self {
-        let pure_code: String = code.chars().filter(check_char).collect();
+        let pure_code: Vec<char> = code.chars().filter(check_char).collect();
 
         Self {
             memory: vec![0; 65535],
@@ -72,8 +72,8 @@ impl Program {
     }
 
     fn next_codelet(&self) -> char {
-        if let Some(c) = self.code.chars().nth(self.counter.try_into().unwrap()) {
-            c
+        if let Some(c) = self.code.get(self.counter as usize) {
+            *c
         } else {
             panic!("Index out of range.")
         }
@@ -124,7 +124,7 @@ impl Program {
                     let mut tracker: u32 = 1;
                     let mut vcounter: u32 = self.counter + 1;
 
-                    for tt in self.code.chars().skip(vcounter as usize) {
+                    for tt in self.code.iter().skip(vcounter as usize) {
                         match tt {
                             '[' => {
                                 tracker += 1;
@@ -154,9 +154,8 @@ impl Program {
                     let mut tracker: u32 = 1;
                     let mut vcounter: u32 = self.counter - 1;
 
-                    let instruction_vector: Vec<char> = self.code.chars().collect();
-                    if instruction_vector.get(vcounter as usize).is_some() {
-                        for tt in instruction_vector[..=vcounter as usize].iter().rev() {
+                    if self.code.get(vcounter as usize).is_some() {
+                        for tt in self.code[..=vcounter as usize].iter().rev() {
                             //println!("Mathing {}, tracker is: {}", tt, tracker);
 
                             match tt {
@@ -201,10 +200,10 @@ impl Program {
 
     fn run(&mut self) -> BFResult<()> {
         let start_time: Instant = Instant::now();
-        let codelet_count: u32 = self.code.chars().count().try_into().unwrap();
+        let codelet_count: u32 = self.code.len() as u32;
         println!("Running bf program. Instruction amount: {}", &codelet_count);
         println!("Pure code:");
-        println!("{}", self.code);
+        println!("{}", self.code.iter().collect::<String>());
         println!("---------------------------------------");
         // Main program loop
         while self.counter < codelet_count {
@@ -253,7 +252,7 @@ impl Program {
     }
 
     fn diagnostic_run(&mut self) -> BFResult<()> {
-        let codelet_count: u32 = self.code.chars().count().try_into().unwrap();
+        let codelet_count: u32 = self.code.len() as u32;
         while self.counter < codelet_count {
             self.step()?;
             clear_term();
