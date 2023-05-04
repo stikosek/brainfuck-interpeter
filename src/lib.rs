@@ -81,7 +81,7 @@ impl Program {
         }
     }
 
-    pub fn step(&mut self) -> BFResult<bool> {
+    pub fn step<F: Fn(String)>(&mut self, printer: F) -> BFResult<bool> {
         let codelet: char = self.next_codelet();
         let current_memory: &mut u8 = &mut self.memory[self.pointer as usize];
         let mut cancel_step: bool = false;
@@ -113,7 +113,7 @@ impl Program {
             '.' => {
                 let conversion_result: char =
                     char::from_u32(*current_memory as u32).unwrap_or('\0');
-                print!("{}", conversion_result);
+                printer( format!("{}", conversion_result));
                 self.output_log.push(conversion_result);
             }
             ',' => {
@@ -146,7 +146,6 @@ impl Program {
                         return Err(BFError::ParenthesesPairingError);
                     }
 
-                    //println!("Closing ] found at {}", vcounter);
                     cancel_step = true;
                     self.counter = vcounter;
                 }
@@ -158,8 +157,6 @@ impl Program {
 
                     if self.code.get(vcounter as usize).is_some() {
                         for tt in self.code[..=vcounter as usize].iter().rev() {
-                            //println!("Mathing {}, tracker is: {}", tt, tracker);
-
                             match tt {
                                 ']' => {
                                     tracker += 1;
@@ -170,7 +167,6 @@ impl Program {
                                 _ => {}
                             }
                             if tracker == 0 {
-                                //println!("breaking");
                                 break;
                             }
 
@@ -182,7 +178,6 @@ impl Program {
                         return Err(BFError::ParenthesesPairingError);
                     }
 
-                    //println!("Closing [ found at {}", vcounter);
                     cancel_step = true;
                     self.counter = vcounter;
                 }
@@ -200,29 +195,27 @@ impl Program {
         Ok(true)
     }
 
-    pub fn run(&mut self) -> BFResult<()> {
+    pub fn run<F: Fn(String)>(&mut self, printer: F) -> BFResult<()> {
         let start_time: Instant = Instant::now();
         let codelet_count: u32 = self.code.len() as u32;
-        println!("Running bf program. Instruction amount: {}", &codelet_count);
-        println!("Pure code:");
-        println!("{}", self.code.iter().collect::<String>());
-        println!("---------------------------------------");
+        printer(format!("Running bf program. Instruction amount: {}", &codelet_count));
+        printer("---------------------------------------".to_owned());
         // Main program loop
         while self.counter < codelet_count {
-            self.step()?;
+            self.step(&printer)?;
         }
 
         let elapsed: Duration = start_time.elapsed();
-        println!("---------------------------------------");
-        println!(
+        printer("---------------------------------------".to_owned());
+        printer(format!(
             "Execution succesful! Took {} microseconds",
             elapsed.as_micros()
-        );
-        println!("Program stopped at count {}.", self.counter);
+        ));
+        printer(format!("Program stopped at count {}.", self.counter));
         std::process::exit(0);
     }
 
-    fn render_memory(&self) {
+    fn render_memory<F: Fn(String)>(&self, printer: F) {
         println!("? = Invisible ascii character\n¿ = Empty cell (0)");
 
         let mut res: String = "Memory: ".to_owned();
@@ -248,17 +241,17 @@ impl Program {
         }
 
         point.push('↥');
-        println!("{}", res);
-        println!("{}", point);
-        println!("Output so far: {}", self.output_log);
+        printer(res);
+        printer(point);
+        printer(format!("Output so far: {}", self.output_log));
     }
 
-    pub fn diagnostic_run(&mut self) -> BFResult<()> {
+    pub fn diagnostic_run<F: Fn(String)>(&mut self, printer: F) -> BFResult<()> {
         let codelet_count: u32 = self.code.len() as u32;
         while self.counter < codelet_count {
-            self.step()?;
+            self.step(&printer)?;
             clear_term();
-            self.render_memory();
+            self.render_memory(&printer);
             std::thread::sleep(Duration::from_millis(10));
         }
 
