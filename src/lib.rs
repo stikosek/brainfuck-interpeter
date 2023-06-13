@@ -216,7 +216,7 @@ impl Program {
     }
 
     fn render_memory<F: Fn(String)>(&self, printer: F) {
-        println!("? = Invisible ascii character\n¿ = Empty cell (0)");
+        printer(format!("? = Invisible ascii character\n¿ = Empty cell (0)"));
 
         let mut res: String = "Memory: ".to_owned();
         let mut point: String = "Point:  ".to_owned();
